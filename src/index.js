@@ -1,37 +1,19 @@
 const Alexa = require('ask-sdk-core');
+const provider = require('./provider');
 const path = require('path');
 const fs = require('fs');
 
-const universitiesFile = path.resolve(__dirname, 'universities.json');
-
 const SKILL_TITLE = "Universidades de España";
 
-function getSlotValueId(intentSlot) {
+function getSlotValue(intentSlot) {
   const resolutions = intentSlot.resolutions.resolutionsPerAuthority;
   for (const resolution of resolutions) {
     if (resolution.status.code === "ER_SUCCESS_MATCH") {
       const firstIntentSlotValue = resolution.values[0].value;
-      return firstIntentSlotValue.id;
+      return firstIntentSlotValue.name;
     }
   }
-}
-
-function makeDistroList(distroRanking, rankingPage, itemsPerPage = 10) {
-  const startPosition = rankingPage * itemsPerPage;
-  const endingPosition = startPosition + itemsPerPage;
-
-  var distroListText = '';
-  for (var i = startPosition; i < endingPosition; i++) {
-    const distro = distroRanking.distros[i];
-
-    if (i % itemsPerPage > 0) {
-      distroListText += ' ';
-    }
-
-    distroListText += `La <say-as interpret-as="ordinal">${distro.position}</say-as> distro es <lang xml:lang="en-US">${distro.name}</lang> con ${distro.hits} votos.`;
-  }
-
-  return distroListText;
+  return null;
 }
 
 const UniversityQueryIntentHandler = {
@@ -40,14 +22,74 @@ const UniversityQueryIntentHandler = {
       && handlerInput.requestEnvelope.request.intent.name === "UniversityQueryIntent"
   },
 
-  handle(handlerInput) {
-    const intent = handlerInput.requestEnvelope.request.intent;
-    const periodSlot = intent.slots["autonomyName"];
+  async handle(handlerInput) {
+    if (handlerInput.requestEnvelope.request.dialogState !== 'COMPLETED') {
+      return handlerInput.responseBuilder
+        .addDelegateDirective()
+        .getResponse();
+    }
 
-    const speechText = `test`
+    const intent = handlerInput.requestEnvelope.request.intent;
+    const autonomyName = getSlotValue(intent.slots["autonomyName"]);
+    
+    const universityList = await provider.readUniversityFile();
+
+    if (!autonomyName) {
+      const autonomies = provider.filterAutonomies(universityList);
+      const speechText = `Esa comunidad autónoma no tiene ninguna universidad. Puedes elegir entre ${autonomies.join(', ')}. ` +
+        '¿De qué comunidad quieres saber las universidades que tiene?'
+      return handlerInput.responseBuilder
+        .addElicitSlotDirective('autonomyName')
+        .speak(speechText)
+        .reprompt(speechText)
+        .getResponse();
+    }
+
+    const universities = provider.filterAutonomyUniversities(universityList, autonomyName);
+    const universitiesNames = universities.map(university => university["Universidad"]);
+
+    const speechText = `La comunidad autónoma tiene ${universities.length} universidades: ${universitiesNames.join(', ')}`
     return handlerInput.responseBuilder
       .speak(speechText)
       .reprompt(speechText)
+      .withShouldEndSession(true)
+      .getResponse();
+  }
+}
+
+const UniversityDataQueryIntentHandler = {
+  canHandle(handlerInput) {
+    return handlerInput.requestEnvelope.request.type === "IntentRequest"
+      && handlerInput.requestEnvelope.request.intent.name === "UniversityDataQueryIntent"
+  },
+
+  async handle(handlerInput) {
+    if (handlerInput.requestEnvelope.request.dialogState !== 'COMPLETED') {
+      return handlerInput.responseBuilder
+        .addDelegateDirective()
+        .getResponse();
+    }
+
+    const intent = handlerInput.requestEnvelope.request.intent;
+    const universityName = getSlotValue(intent.slots["universityName"]);
+
+    if (!universityName) {
+      const speechText = 'No puedo encontrar esa universidad. Dime una que exista.'
+      return handlerInput.responseBuilder
+        .addElicitSlotDirective('universityName')
+        .speak(speechText)
+        .reprompt(speechText)
+        .getResponse();
+    }
+
+    const universityList = await provider.readUniversityFile();
+    const university = provider.findUniversity(universityList, universityName);
+
+    const speechText = `La ${university["Universidad"]} con sede principal en ${university["Sede principal"]} fué fundada en ${university["Fundación"]}. Esta universidad es ${university["Tipo"]}`
+    return handlerInput.responseBuilder
+      .speak(speechText)
+      .reprompt(speechText)
+      .withShouldEndSession(true)
       .getResponse();
   }
 }
@@ -56,11 +98,15 @@ const LaunchRequestHandler = {
   canHandle(handlerInput) {
     return handlerInput.requestEnvelope.request.type === 'LaunchRequest';
   },
-  handle(handlerInput) {
+  async handle(handlerInput) {
+    const universityList = await provider.readUniversityFile();
+    const autonomies = provider.filterAutonomies(universityList);
+
     const speechText = 'Bienvenido a Universidades de España, di "dame una lista de universidades" ' + 
-      'o "dame una lista de las universidades de la Comunidad de Madrid". ' +
+      'o "dame una lista de las universidades" seguido de la comunidad autónoma. ' +
       'También me puedes decir "dime información de" seguido de la universidad. ' +
-      `Las comunidades autónomas con alguna universidad son ${}`
+      `Las comunidades autónomas con alguna universidad son ${autonomies.join(', ')}. ` + 
+      'Ahora bien, ¿que quieres hacer?'
 
     return handlerInput.responseBuilder
       .speak(speechText)
@@ -77,8 +123,8 @@ const HelpIntentHandler = {
   },
   handle(handlerInput) {
     const speechText = 'Esta skill te da información de las universidades que hay en una Comunidad Autónoma. ' +
-      'Me puedes decir "dame una lista de universidades" o "dame una lista de las universidades de la Comunidad de Madrid. ' +
-      'También me puedes decir "dime información de" seguido de la universidad y te diré cuando fue fundada junto a otros datos.'
+      'Me puedes decir "dame una lista de universidades" o "dame una lista de las universidades" seguido de la comunidad autónoma. ' +
+      'También me puedes decir "dime información de" seguido de la universidad y te diré cuando fue fundada junto a otros datos. ¿Que quieres hacer?'
 
     return handlerInput.responseBuilder
       .speak(speechText)
@@ -111,12 +157,6 @@ const SessionEndedRequestHandler = {
   },
   handle(handlerInput) {
     console.log(`Session ended: ${handlerInput}`);
-
-    const sessionAttributes = handlerInput.attributesManager.getSessionAttributes() || {};
-    sessionAttributes.rankingPage = 0;
-    sessionAttributes.rankingSlot = null;
-    handlerInput.attributesManager.setSessionAttributes(sessionAttributes);
-
     return handlerInput.responseBuilder.getResponse();
   }
 };
@@ -148,6 +188,7 @@ exports.handler = async function (event, context) {
       .addRequestHandlers(
         LaunchRequestHandler,
         UniversityQueryIntentHandler,
+        UniversityDataQueryIntentHandler,
         HelpIntentHandler,
         CancelAndStopIntentHandler,
         SessionEndedRequestHandler,
