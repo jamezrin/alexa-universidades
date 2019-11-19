@@ -2,7 +2,7 @@ const Alexa = require('ask-sdk-core');
 const path = require('path');
 const fs = require('fs');
 
-const universityFile = path.resolve(__dirname, 'universidades.csv');
+const universitiesFile = path.resolve(__dirname, 'universities.json');
 
 const SKILL_TITLE = "Universidades de España";
 
@@ -13,25 +13,6 @@ function getSlotValueId(intentSlot) {
       const firstIntentSlotValue = resolution.values[0].value;
       return firstIntentSlotValue.id;
     }
-  }
-}
-
-function getRankingByPeriod(periodSlot) {
-  const periodSlotValue = periodSlot.value;
-
-  if (!periodSlotValue) {
-    return distroRankingFile[0];
-  }
-
-  const periodSlotValueId = getSlotValueId(periodSlot);
-  if (periodSlotValueId === "last_month") {
-    return distroRankingFile[0];
-  } else if (periodSlotValueId === "last_tree_months") {
-    return distroRankingFile[1];
-  } else if (periodSlotValueId === "last_six_months") {
-    return distroRankingFile[2];
-  } else if (periodSlotValueId === "last_twelve_months") {
-    return distroRankingFile[3];
   }
 }
 
@@ -53,89 +34,20 @@ function makeDistroList(distroRanking, rankingPage, itemsPerPage = 10) {
   return distroListText;
 }
 
-const DistroRankingIntentHandler = {
+const UniversityQueryIntentHandler = {
   canHandle(handlerInput) {
     return handlerInput.requestEnvelope.request.type === "IntentRequest"
-      && handlerInput.requestEnvelope.request.intent.name === "DistroRankingIntent"
+      && handlerInput.requestEnvelope.request.intent.name === "UniversityQueryIntent"
   },
 
   handle(handlerInput) {
     const intent = handlerInput.requestEnvelope.request.intent;
-    const sessionAttributes = handlerInput.attributesManager.getSessionAttributes() || {};
-    const periodSlot = intent.slots["period"];
+    const periodSlot = intent.slots["autonomyName"];
 
-    sessionAttributes.rankingPage = 1;
-    sessionAttributes.periodSlot = periodSlot;
-    handlerInput.attributesManager.setSessionAttributes(sessionAttributes);
-
-    const distroRanking = getRankingByPeriod(periodSlot);
-    const distroListText = makeDistroList(distroRanking, 0);
-    const speechText = `Las primeras diez distribuciones en el ranking son: ${distroListText} ¿Quieres saber las siguientes diez?`
+    const speechText = `test`
     return handlerInput.responseBuilder
       .speak(speechText)
       .reprompt(speechText)
-      .getResponse();
-  }
-}
-
-const DistroRankingNextIntentHandler = {
-  canHandle(handlerInput) {
-    const sessionAttributes = handlerInput.attributesManager.getSessionAttributes() || {};
-    return handlerInput.requestEnvelope.request.type === "IntentRequest"
-      && (handlerInput.requestEnvelope.request.intent.name === "AMAZON.YesIntent" ||
-        handlerInput.requestEnvelope.request.intent.name === "AMAZON.MoreIntent")
-      && sessionAttributes.rankingPage >= 1
-  },
-
-  handle(handlerInput) {
-    const sessionAttributes = handlerInput.attributesManager.getSessionAttributes() || {};
-    const rankingPage = sessionAttributes.rankingPage++;
-    const periodSlot = sessionAttributes.periodSlot;
-    handlerInput.attributesManager.setSessionAttributes(sessionAttributes);
-
-    const distroRanking = getRankingByPeriod(periodSlot);
-
-    if (rankingPage * 10 >= distroRanking.distros.length) {
-      const speechText = 'No hay mas distros que mostrarte'
-      return handlerInput.responseBuilder
-        .speak(speechText)
-        .reprompt(speechText)
-        .withSimpleCard(SKILL_TITLE, speechText)
-        .withShouldEndSession(true)
-        .getResponse();
-    }
-
-    const distroListText = makeDistroList(distroRanking, rankingPage);
-    const speechText = `Las siguientes diez distribuciones son: ${distroListText} ¿Quieres saber las siguientes diez?`
-
-    return handlerInput.responseBuilder
-      .speak(speechText)
-      .reprompt(speechText)
-      .getResponse();
-  }
-}
-
-const DistroRankingStopNextIntentHandler = {
-  canHandle(handlerInput) {
-    const sessionAttributes = handlerInput.attributesManager.getSessionAttributes() || {};
-    return handlerInput.requestEnvelope.request.type === "IntentRequest"
-      && (handlerInput.requestEnvelope.request.intent.name === "AMAZON.NoIntent" ||
-        handlerInput.requestEnvelope.request.intent.name === "AMAZON.CancelIntent")
-      && sessionAttributes.rankingPage >= 1;
-  },
-
-  handle(handlerInput) {
-    const attributesManager = handlerInput.attributesManager;
-    const sessionAttributes = attributesManager.getSessionAttributes() || {};
-    sessionAttributes.rankingPage = 0;
-    sessionAttributes.rankingSlot = null;
-    attributesManager.setSessionAttributes(sessionAttributes);
-
-    const speechText = '¡Hasta luego!';
-    return handlerInput.responseBuilder
-      .speak(speechText)
-      .reprompt(speechText)
-      .withShouldEndSession(true)
       .getResponse();
   }
 }
@@ -145,7 +57,10 @@ const LaunchRequestHandler = {
     return handlerInput.requestEnvelope.request.type === 'LaunchRequest';
   },
   handle(handlerInput) {
-    const speechText = 'Bienvenido a Universidades de España, di "dame una lista de universidades o "dame una lista de las universidades de la Comunidad de Madrid"'
+    const speechText = 'Bienvenido a Universidades de España, di "dame una lista de universidades" ' + 
+      'o "dame una lista de las universidades de la Comunidad de Madrid". ' +
+      'También me puedes decir "dime información de" seguido de la universidad. ' +
+      `Las comunidades autónomas con alguna universidad son ${}`
 
     return handlerInput.responseBuilder
       .speak(speechText)
@@ -161,9 +76,9 @@ const HelpIntentHandler = {
       && handlerInput.requestEnvelope.request.intent.name === 'AMAZON.HelpIntent';
   },
   handle(handlerInput) {
-    const speechText =
-      'Puedes decir "muéstrame el ranking" o elegir entre el ultimo mes, tres, seis o doce meses, por ejemplo "muéstrame el ranking de los últimos seis meses".' +
-      'Por defecto te muestro el ranking de este último mes.';
+    const speechText = 'Esta skill te da información de las universidades que hay en una Comunidad Autónoma. ' +
+      'Me puedes decir "dame una lista de universidades" o "dame una lista de las universidades de la Comunidad de Madrid. ' +
+      'También me puedes decir "dime información de" seguido de la universidad y te diré cuando fue fundada junto a otros datos.'
 
     return handlerInput.responseBuilder
       .speak(speechText)
@@ -232,9 +147,7 @@ exports.handler = async function (event, context) {
     skill = Alexa.SkillBuilders.custom()
       .addRequestHandlers(
         LaunchRequestHandler,
-        DistroRankingIntentHandler,
-        DistroRankingNextIntentHandler,
-        DistroRankingStopNextIntentHandler,
+        UniversityQueryIntentHandler,
         HelpIntentHandler,
         CancelAndStopIntentHandler,
         SessionEndedRequestHandler,
