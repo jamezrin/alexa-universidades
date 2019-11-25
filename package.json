@@ -1,5 +1,5 @@
 {
-  "name": "alexa-linuxdistros",
+  "name": "alexa-universidades",
   "version": "1.0.0",
   "description": "Handler: index.handler",
   "main": "update.js",
@@ -11,14 +11,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jamezrin/alexa-linuxdistros.git"
+    "url": "git+https://github.com/jamezrin/alexa-universidades.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/jamezrin/alexa-linuxdistros/issues"
+    "url": "https://github.com/jamezrin/alexa-universidades/issues"
   },
-  "homepage": "https://github.com/jamezrin/alexa-linuxdistros#readme",
+  "homepage": "https://github.com/jamezrin/alexa-universidades#readme",
   "dependencies": {
     "cheerio": "^1.0.0-rc.3",
     "csv-parser": "^2.3.2",

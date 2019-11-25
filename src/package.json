@@ -1,5 +1,5 @@
 {
-  "name": "alexa-linuxdistros",
+  "name": "alexa-universidades",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -12,5 +12,5 @@
     "csv-parser": "^2.3.2"
   },
   "devDependencies": {},
-  "description": "Alexa Linux Distros running on AWS Lambda"
+  "description": "Alexa Universidades running on AWS Lambda"
 }
