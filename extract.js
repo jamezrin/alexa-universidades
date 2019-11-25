@@ -6,7 +6,7 @@ provider.readUniversityFile().then(data => {
     const autonomies = provider.filterAutonomies(data);
     fs.writeFileSync('autonomies.txt', autonomies.join('\n'));
     console.log('Successfully updated autonomies file');
-    console.log('Autonomies:', autonomies)
+    console.log('Autonomies:', autonomies);
 
     console.log('Creating universities file...');
     const universities = provider.filterUniversities(data);
@@ -14,7 +14,7 @@ provider.readUniversityFile().then(data => {
     console.log('Successfully updated universities file');
     console.log('Universities:', universities);
 
-    console.log('Listing universities per autonomy')
+    console.log('Listing universities per autonomy');
     autonomies.forEach(autonomy => {
         const autonomyUniversities = provider.filterAutonomyUniversities(data, autonomy);
 
@@ -23,4 +23,4 @@ provider.readUniversityFile().then(data => {
             JSON.stringify(autonomyUniversities)
         )
     })
-})
+});

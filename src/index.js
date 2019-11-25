@@ -1,7 +1,5 @@
 const Alexa = require('ask-sdk-core');
 const provider = require('./provider');
-const path = require('path');
-const fs = require('fs');
 
 const SKILL_TITLE = "Universidades de España";
 
@@ -55,7 +53,7 @@ const UniversityQueryIntentHandler = {
       .withShouldEndSession(true)
       .getResponse();
   }
-}
+};
 
 const UniversityDataQueryIntentHandler = {
   canHandle(handlerInput) {
@@ -92,7 +90,7 @@ const UniversityDataQueryIntentHandler = {
       .withShouldEndSession(true)
       .getResponse();
   }
-}
+};
 
 const LaunchRequestHandler = {
   canHandle(handlerInput) {

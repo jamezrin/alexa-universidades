@@ -48,4 +48,4 @@ module.exports = {
     filterUniversities,
     filterAutonomyUniversities,
     findUniversity
-}
+};
